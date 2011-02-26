@@ -1,0 +1,13 @@
+#!/bin/bash
+source common
+if [ "$2" ] ; then
+	dir=$1
+	shift
+else
+	dir=.
+fi
+what=$1
+#echo "dir= $dir"
+#echo "what=$what"
+
+find $dir -name '*.py' -o -name '*.cc' -o -name '*.c' -o -name '*.C' -o -name '*.go' -o -name '*.h' -o -name '*.php' -o -name '*.inc' | xargs grep -n --color $what

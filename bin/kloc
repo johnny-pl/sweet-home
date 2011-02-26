@@ -1,0 +1,10 @@
+#!/bin/bash
+source common
+if [ "$1" ] ; then
+	dir=$1
+	shift
+else
+	dir=.
+fi
+
+find $dir -name '*.py' -o -name '*.cc' -o -name '*.c' -o -name '*.C' -o -name '*.go' -o -name '*.h' | xargs wc -l

@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+import logging, os, sys, re, time
+
+def process_file(f):
+	pat_func = re.compile(r'[A-Za-z_][A-Za-z_0-9]+\s*\(.*\)\s*$')
+	l = f.readline()
+	balance = 0
+	while l:
+		if pat_func.search(l) and balance == 0:
+			print "%s;" % l.rstrip('\n\r')
+		balance += l.count('{')
+		balance -= l.count('}')
+		l = f.readline()
+
+def main():
+	if len(sys.argv[1:]) > 0:
+		fcnt = len(sys.argv[1:])
+		for fn in sys.argv[1:]:
+			f = open(fn)
+			if fcnt > 1:
+				print fn
+			process_file(f)
+			if fcnt > 1:
+				print
+			f.close()
+	else:
+		process_file(sys.stdin)
+	pass
+
+if __name__ == '__main__':
+	main()
+

@@ -17,7 +17,7 @@ alias ....="cd ../../.."
 alias .....="cd ../../../.."
 alias ......="cd ../../../../.."
 
-export PATH=$PATH:/home/johnny/bin
+export PATH=$PATH:$HOME/bin
 
 #kolory w manie (ubucentrum) 
 export LESS_TERMCAP_mb=$'\E[01;31m'
