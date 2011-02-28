@@ -18,9 +18,9 @@ def backupPath(path):
 		_, tail = os.path.split(path)
 		destPath = os.path.join(d, tail)
 		if os.path.isdir(path):
-			shutil.copytree(path, destPath)
+			shutil.copytree(path, destPath, True)
 		elif os.path.isfile(path):
-			shutil.copy(path, destPath)
+			shutil.copy2(path, destPath)
 	except:
 		return False
 	return True
@@ -42,9 +42,9 @@ def copyFiles(copyList, destDir):
 
 		print 'copying %s to %s' % (e[0], dest)
 		if os.path.isdir(e[0]):
-			shutil.copytree(e[0], dest)
+			shutil.copytree(e[0], dest, True)
 		elif os.path.isfile(e[0]):
-			shutil.copy(e[0], dest)
+			shutil.copy2(e[0], dest)
 		else:
 			logging.warn('entry %s is neither file nor directory' % e[0])
 	pass
