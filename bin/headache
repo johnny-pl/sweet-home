@@ -1,0 +1,219 @@
+#!/usr/bin/env python
+import logging, os, sys, re, time
+import pickle, getopt
+
+include_idx = {}
+cfg_gen_index = False
+cfg_args = []
+
+def index_man_file(fn):
+	str = os.popen('zcat %s' % fn).read()
+	m = re.search('SYNOPSIS(.*)DESCRIPTION', str, re.M | re.S )
+	if not m:
+		return
+	header = m.group(1)
+	m = re.search('#include\s+([^\n>]*>)', str )
+	if not m:
+		return
+	include_str = m.group(1)
+	logging.info('Indexing %s', fn)
+	for m in re.finditer('(?:struct)?(?:void|char|long|short|unsigned|long int|short int|unsigned int|long double|int|float|double|.*_t)[ \t*]+(\w+)\(.*\);', str ):
+		fun_str = m.group(1)
+		include_idx[fun_str] = include_idx.get(fun_str, []) + [include_str]
+
+def uniq_include_idx():
+	global include_idx
+	new_idx = {}
+	for k, lst in include_idx.items():
+		h = {}
+		for x in lst:
+			h[x] = 1
+		new_idx[k] = sorted(h)
+	include_idx = new_idx
+
+def load_include_idx():
+	global include_idx
+	i = 0
+	fn = os.path.join(os.getenv('HOME'), '.headache.idx')
+	if not os.path.exists(fn):
+		logging.info('Index file doesn\'t exist')
+		raise Exception('Not existing file')
+	#logging.info('Loading index file')
+	f = open(fn)
+	#include_idx = pickle.load(f)
+	lines = f.readlines()
+	for l in lines:
+		l = l.rstrip()
+		tab = l.split('\t')
+		include_idx[tab[0]] = tab[1:]
+	f.close()
+	return True
+
+def save_include_idx():
+	global include_idx
+	i = 0
+	fn = os.path.join(os.getenv('HOME'), '.headache.idx')
+	f = open(fn, 'wt')
+	if not f:
+		raise Exception('Cannot write to %s' % fn)
+	for k in sorted(include_idx):
+		lst = include_idx[k]
+		f.write( '%s\t%s\n' % (k, '\t'.join(lst)) ) 
+
+	# pickle.dump(include_idx, f)
+	f.close()
+	return True
+
+def add_to_include_idx(d):
+	global include_idx
+	i = 0
+	for t in  os.listdir(d):
+		fn = os.path.join(d, t)
+		#if fn.find('pthread') < 0:
+		#	continue
+		index_man_file(fn)
+		#i += 1
+		#if i >= 10:
+		#	break
+	uniq_include_idx()
+	#print include_idx
+	#assert False
+
+def init_include_idx():
+	try:
+		load_include_idx()
+	except Exception as e:
+		logging.info('Loading include index failed, %s' % e)
+
+def nice_includes(include_list):
+	inc_list = []
+	app_inc = []
+	hash = {}
+	for inc in include_list:
+		if hash.has_key(inc):
+			continue
+		hash[inc] = 1
+		slash_cnt = inc.count('/')
+		if re.match('#include\s+<sys/', inc):
+			inc_list.append( (0, inc) )
+			continue
+		if re.match('#include\s+<net/', inc):
+			inc_list.append( (1, inc) )
+			continue
+		if re.match('#include\s+<', inc):
+			inc_list.append( (2, inc) )
+			continue
+		if re.match('#include\s+"', inc):
+			app_inc.append( (3, inc) )
+			continue
+		app_inc.append( (4, inc) )
+
+	inc_list.sort()
+	app_inc.sort()
+	if app_inc:
+		return [x[1] for x in inc_list] + [' '] + [x[1] for x in app_inc]
+	else:
+		return [x[1] for x in inc_list]
+
+def process_file(f, fn):
+	if not f:
+		logging.warning('Problem with file %s' % fn)
+	lines = f.readlines()
+	str = "".join(lines)
+
+	blanks = []
+	inc_hash = {}
+	inc_lines = []
+	inc_pat = re.compile('^#include.*')
+	blank_pat = re.compile('^\s*$')
+
+	for li, l in enumerate(lines):
+		if inc_pat.match(l):
+			inc_hash[ l.rstrip('\n') ] = 1
+			inc_lines.append(li)
+
+	result_lines = lines[:]
+	# check include consistency
+	if inc_lines:
+		min_incl = min(inc_lines)
+		max_incl = max(inc_lines)
+		for i in xrange(min_incl, max_incl + 1):
+			l = lines[i]
+			if not inc_pat.match(l) and not blank_pat.match(l):
+				logging.error("in %s error on line %d, include block must consist only of include lines and blanks" % (fn, i + 1))
+				return
+		# remove include block from result
+		del(result_lines[min_incl:max_incl + 1])
+
+	funs = {}
+	for m in re.finditer(r'\W(\w+)\(.*\)', str):
+		funn =  m.group(1)
+		if funn in ('if', 'for', 'while', 'main', 'return'):
+			continue
+		if len(funn) < 4:
+			continue
+		funs[funn] = 1
+	for f in funs.keys():
+		if not include_idx.has_key(f):
+			continue
+		for x in include_idx[f]:
+			inc_hash[ '#include ' + x ] = 1
+	includes = inc_hash.keys()
+	result_includes = nice_includes(includes)
+
+	result_lines = [l + '\n' for l in result_includes] + result_lines
+	for l in result_lines:
+		print >>sys.stdout, l,
+	pass
+
+def parse_cmdline():
+	global cfg_gen_index, cfg_args
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "g", ["gen-index"])
+	except getopt.GetoptError, err:
+		# print help information and exit:
+		print str(err) # will print something like "option -a not recognized"
+		usage()
+		sys.exit(2)
+	for o, a in opts:
+		if o in ("-g", "--gen-index"):
+			cfg_gen_index = True
+	cfg_args = args
+
+def main():
+	global include_idx
+	parse_cmdline();
+
+	if cfg_gen_index:
+		include_idx = {}
+		if len(cfg_args) > 0:
+			for d in cfg_args:
+				add_to_include_idx(d)
+		else:
+			add_to_include_idx('/usr/share/man/man3')
+			#add_to_include_idx('/home/johnny/tmp/str')
+		save_include_idx()
+
+		logging.info("All done. Indexed %d functions." % len(include_idx.keys()));
+		return 0
+
+	init_include_idx()
+	if len(cfg_args) > 0:
+		fcnt = len(cfg_args)
+		for fn in cfg_args:
+			f = open(fn)
+			if fcnt > 1:
+				print fn
+			process_file(f, fn)
+			if fcnt > 1:
+				print
+			f.close()
+	else:
+		process_file(sys.stdin, 'stdin')
+	return
+
+if __name__ == '__main__':
+	FORMAT = "%(asctime)s %(levelname)s: %(message)s"
+	logging.basicConfig(format=FORMAT, level=logging.INFO, stream=sys.stderr)
+	main()
+
