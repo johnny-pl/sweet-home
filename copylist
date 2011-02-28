@@ -6,3 +6,4 @@ bin/find-src	bin/find-src
 bin/kloc	bin/kloc
 bin/psf	bin/psf
 vimrc	.vimrc
+vim	.vim
