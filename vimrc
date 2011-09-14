@@ -221,7 +221,7 @@ function! HelloWorld()
 	return "hello world"
 endfunction
 
-inoremap <expr> <TAB> TabOrCompletion()
+"inoremap <expr> <TAB> TabOrCompletion()
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -262,7 +262,7 @@ endfunction
 nmap =b :call CommasToBullets()<CR><CR>
 
 "http://cloudhead.io/2010/04/24/staying-the-hell-out-of-insert-mode/
-inoremap jj <Esc>
+inoremap kj <Esc>
 
 
 
@@ -289,6 +289,10 @@ autocmd BufRead,BufNewFile,BufEnter *.cc source ~/.vim/ftype/c.vim
 autocmd BufRead,BufNewFile,BufEnter *.cpp source ~/.vim/ftype/c.vim
 autocmd BufRead,BufNewFile,BufEnter *.h source ~/.vim/ftype/c.vim
 autocmd BufRead,BufNewFile,BufEnter *.hpp source ~/.vim/ftype/c.vim
+
+" reużywanie zakładek przy błędach
+" set switchbuf=useopen,usetab,newtab
+
 
 
 
